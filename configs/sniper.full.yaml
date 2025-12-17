@@ -9,17 +9,17 @@ engine:
   bar_seconds: 5                   # allowed: 1,2,5,10
 
   # Donchian window built from CLOSED 1m klines
-  donchian_window_minutes: 60      # number of 1m candles to retain
+  donchian_window_minutes: 120     # number of 1m candles to retain
 
   # Robust Z window over 5s delta_tick
   roll_window_bars: 360            # >=60; more = slower, smoother
 
   # Filters
   min_trades_per_bar: 20           # skip bars with fewer trades
-  cooldown_seconds: 60             # per-symbol cooldown after any signal
+  cooldown_seconds: 120            # per-symbol cooldown after any signal
 
   # Signal thresholds
-  opposing_threshold_z: 0.25       # require opposing aggression >= this Z
+  opposing_threshold_z: 0.5        # require opposing aggression >= this Z
   z_cap_abs: 10                    # reject if abs(Z) > this (0 disables)
 
 execution:

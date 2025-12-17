@@ -1,13 +1,13 @@
 engine:
   symbols: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"]
   bar_seconds: 5
-  donchian_window_minutes: 60      # 1h Donchian bands from closed 1m klines
+  donchian_window_minutes: 120     # 2h Donchian bands from closed 1m klines (tighter)
   roll_window_bars: 360            # 30 minutes of 5s delta bars for robust Z
   min_trades_per_bar: 20           # skip thin bars
-  cooldown_seconds: 60             # per-symbol throttle between entries
+  cooldown_seconds: 120            # per-symbol throttle between entries
 
   # Signal thresholds
-  opposing_threshold_z: 0.25       # require opposing flow of at least this Z
+  opposing_threshold_z: 0.5        # require stronger opposing flow
   z_cap_abs: 10                    # kill-switch for extreme Z (set 0 to disable)
 
 execution:

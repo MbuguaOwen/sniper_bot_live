@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import inspect
 import logging
+import math
 import os
 import signal
 import time
@@ -735,33 +736,31 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                         continue
 
                     if trading_mode != "live":
-                        await send_tg_trade(
-                            "\n".join(
-                                [
-                                    f"📌 <b>PAPER OPEN</b> <b>{_h(sym)}</b>",
-                                    _kv("Direction", signal_s),
-                                    _kv("Qty", qty_open),
-                                    _kv("Mark", f"{mark:.2f}"),
-                                    _kv("Delta Z", f"{dz:.2f}"),
-                                    _kv("Trades", bar.trades),
-                                ]
-                            )
-                        )
+                        lines = [
+                            f"📌 <b>PAPER OPEN</b> <b>{_h(sym)}</b>",
+                            _kv("Direction", signal_s),
+                            _kv("Qty", qty_open),
+                            _kv("Mark", f"{mark:.2f}"),
+                            _kv("Delta Z", f"{dz:.2f}"),
+                            _kv("Trades", bar.trades),
+                        ]
+                        if not (math.isnan(d_high) or math.isnan(d_low)):
+                            lines.append(_kv("Donchian", f"{d_low:.2f} / {d_high:.2f}"))
+                        await send_tg_trade("\n".join(lines))
                     else:
                         stop_note = "stop_ok" if not res.get("stop_error") else "stop_fail"
-                        await send_tg_trade(
-                            "\n".join(
-                                [
-                                    f"🚀 <b>OPEN SENT</b> <b>{_h(sym)}</b>",
-                                    _kv("Direction", signal_s),
-                                    _kv("Qty", qty_open),
-                                    _kv("Mark", f"{mark:.2f}"),
-                                    _kv("Delta Z", f"{dz:.2f}"),
-                                    _kv("Trades", bar.trades),
-                                    _kv("Stop", stop_note),
-                                ]
-                            )
-                        )
+                        lines = [
+                            f"🚀 <b>OPEN SENT</b> <b>{_h(sym)}</b>",
+                            _kv("Direction", signal_s),
+                            _kv("Qty", qty_open),
+                            _kv("Mark", f"{mark:.2f}"),
+                            _kv("Delta Z", f"{dz:.2f}"),
+                            _kv("Trades", bar.trades),
+                            _kv("Stop", stop_note),
+                        ]
+                        if not (math.isnan(d_high) or math.isnan(d_low)):
+                            lines.append(_kv("Donchian", f"{d_low:.2f} / {d_high:.2f}"))
+                        await send_tg_trade("\n".join(lines))
                         if res.get("stop_error"):
                             await send_tg_info(
                                 "\n".join(
