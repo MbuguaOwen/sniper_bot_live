@@ -1,0 +1,36 @@
+engine:
+  symbols: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"]
+  bar_seconds: 5
+  donchian_window_minutes: 60      # 1h Donchian bands from closed 1m klines
+  roll_window_bars: 360            # 30 minutes of 5s delta bars for robust Z
+  min_trades_per_bar: 20           # skip thin bars
+  cooldown_seconds: 60             # per-symbol throttle between entries
+
+  # Signal thresholds
+  opposing_threshold_z: 0.25       # require opposing flow of at least this Z
+  z_cap_abs: 10                    # kill-switch for extreme Z (set 0 to disable)
+
+execution:
+  notional_usdt_per_trade: 25.0
+  leverage: 3
+  stop_loss_pct: 0.002             # 0.2% hard stop (algo close-all)
+  time_exit_seconds: 300           # exit after 5 minutes
+  warmup_seconds: 90               # ignore signals during initial warmup
+
+logging:
+  out_dir: "logs"
+  events_csv: "events.csv"
+  orders_csv: "orders.csv"
+  trades_csv: "trades.csv"
+  level: "INFO"
+
+monitor:
+  sample_interval_seconds: 5
+  telegram_heartbeat: false
+  heartbeat_interval_seconds: 1800
+  telegram_min_gap_seconds: 300
+  stale_aggtrade_seconds: 60
+  stale_kline_seconds: 180
+  stale_repeat_seconds: 600
+  stale_force_reconnect_seconds: 240
+  health_csv: "health.csv"

@@ -1,0 +1,62 @@
+# /docs/
+# Full configuration with every optional key spelled out.
+# Safe for paper mode by default; flip TRADING_MODE=live in .env when ready.
+
+engine:
+  # Symbols to trade (USDT-margined perpetuals).
+  symbols: ["BTCUSDT", "ETHUSDT"]
+
+  # Bar construction (aggTrade -> 5s bars)
+  bar_seconds: 5                   # allowed: 1,2,5,10
+
+  # Donchian window built from CLOSED 1m klines
+  donchian_window_minutes: 60      # number of 1m candles to retain
+
+  # Robust Z window over 5s delta_tick
+  roll_window_bars: 360            # >=60; more = slower, smoother
+
+  # Filters
+  min_trades_per_bar: 20           # skip bars with fewer trades
+  cooldown_seconds: 60             # per-symbol cooldown after any signal
+
+  # Signal thresholds
+  opposing_threshold_z: 0.25       # require opposing aggression >= this Z
+  z_cap_abs: 10                    # reject if abs(Z) > this (0 disables)
+
+execution:
+  # Position sizing (quote currency USDT). Qty rounded to lot step.
+  notional_usdt_per_trade: 25.0
+  leverage: 3
+
+  # Risk controls
+  stop_loss_pct: 0.002             # 0.2% hard stop (algo close-all)
+  time_exit_seconds: 300           # time-based exit (reduce-only market)
+
+  # Warm-up
+  warmup_seconds: 90               # ignore signals for first N seconds after start
+
+logging:
+  # CSVs are written under out_dir
+  out_dir: "logs"
+  events_csv: "events.csv"         # finalized 5s bars + decision reasons
+  orders_csv: "orders.csv"         # opens/exits/sync events
+  trades_csv: "trades.csv"         # compact trade summaries
+  level: "INFO"                    # INFO/DEBUG/WARNING/ERROR
+
+monitor:
+  # Health sampling
+  sample_interval_seconds: 5
+
+  # Telegram heartbeat (optional; non-trade noise throttled by telegram_min_gap_seconds)
+  telegram_heartbeat: false
+  heartbeat_interval_seconds: 1800
+  telegram_min_gap_seconds: 300
+
+  # Feed staleness detection
+  stale_aggtrade_seconds: 60
+  stale_kline_seconds: 180
+  stale_repeat_seconds: 600
+  stale_force_reconnect_seconds: 240
+
+  # Health log file
+  health_csv: "health.csv"

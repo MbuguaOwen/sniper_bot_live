@@ -1,0 +1,20 @@
+[Unit]
+Description=Donchian Touch + Opposing Flow Sniper Bot (USD-M Futures)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/sniper_bot_live
+EnvironmentFile=/opt/sniper_bot_live/.env
+ExecStart=/opt/sniper_bot_live/.venv/bin/python -m sniper_bot.main --config /opt/sniper_bot_live/configs/sniper.yaml
+Restart=always
+RestartSec=3
+KillSignal=SIGINT
+
+# Hardening (optional)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
