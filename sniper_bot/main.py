@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import inspect
 import logging
+import os
 import signal
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List
+
+import html
 
 from dotenv import load_dotenv
 
@@ -69,12 +73,31 @@ async def run_startup_self_test(rest: BinanceFuturesRest, ws_base: str, symbols:
 
 
 async def main_async(config_path: str, self_test: bool = False, self_test_timeout: int = 120) -> None:
-    load_dotenv()
+    # Load .env reliably for both interactive runs and systemd.
+    # Prefer repo-root .env (one level above the sniper_bot package).
+    repo_root = Path(__file__).resolve().parents[1]
+    dotenv_path = repo_root / ".env"
+    dotenv_msg = ""
+    if dotenv_path.exists():
+        load_dotenv(dotenv_path=dotenv_path)
+        dotenv_msg = f"Loaded dotenv: {dotenv_path}"
+    else:
+        # Fallback: current working directory search.
+        load_dotenv()
+        dotenv_msg = "Loaded dotenv via search (cwd/parents)"
 
     cfg = load_config(config_path)
     setup_logging(cfg.logging.level)
 
-    is_testnet = env_bool("BINANCE_TESTNET", True)
+    # Resolve testnet with precedence: env -> default True (config testnet ignored to keep .env authoritative)
+    env_testnet_raw = os.getenv("BINANCE_TESTNET")
+    if env_testnet_raw and env_testnet_raw.strip():
+        is_testnet = env_bool("BINANCE_TESTNET", True)
+        testnet_source = "env"
+    else:
+        is_testnet = True
+        testnet_source = "default"
+
     trading_mode = env_str("TRADING_MODE", "paper").lower().strip()
     max_open_positions = env_int("MAX_OPEN_POSITIONS", 1)
     self_test_strict = env_bool("SELF_TEST_STRICT", False)
@@ -82,16 +105,50 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
     api_key = env_str("BINANCE_API_KEY", "").strip()
     api_secret = env_str("BINANCE_API_SECRET", "").strip()
 
+    # Endpoints (market streams + REST). You can override via env or config.binance.
+    rest_default = "https://demo-fapi.binance.com" if is_testnet else "https://fapi.binance.com"
+    ws_default = "wss://fstream.binancefuture.com" if is_testnet else "wss://fstream.binance.com"
+
+    env_rest = env_str("BINANCE_REST_BASE", "").strip()
+    env_ws = env_str("BINANCE_WS_BASE", "").strip()
+
+    if env_rest:
+        rest_base = env_rest
+        rest_source = "env"
+    elif cfg.binance.rest_base:
+        rest_base = cfg.binance.rest_base.strip()
+        rest_source = "config"
+    else:
+        rest_base = rest_default
+        rest_source = "default"
+
+    if env_ws:
+        ws_base = env_ws
+        ws_source = "env"
+    elif cfg.binance.ws_base:
+        ws_base = cfg.binance.ws_base.strip()
+        ws_source = "config"
+    else:
+        ws_base = ws_default
+        ws_source = "default"
+
+    # Log only safe diagnostics (never secrets).
+    log.info(dotenv_msg)
+    log.info(
+        "Resolved BINANCE_TESTNET=%s (source=%s) | TRADING_MODE=%s | REST=%s (source=%s) | WS=%s (source=%s)",
+        is_testnet,
+        testnet_source,
+        trading_mode,
+        rest_base,
+        rest_source,
+        ws_base,
+        ws_source,
+    )
+
     if trading_mode == "live" and (not api_key or not api_secret):
         raise SystemExit(
             "TRADING_MODE=live requires BINANCE_API_KEY and BINANCE_API_SECRET in environment/.env"
         )
-
-    # Endpoints (market streams + REST). You can override in env if needed.
-    rest_default = "https://demo-fapi.binance.com" if is_testnet else "https://fapi.binance.com"
-    ws_default = "wss://fstream.binancefuture.com" if is_testnet else "wss://fstream.binance.com"
-    rest_base = (env_str("BINANCE_REST_BASE", rest_default) or rest_default).strip()
-    ws_base = (env_str("BINANCE_WS_BASE", ws_default) or ws_default).strip()
 
     out_dir = Path(cfg.logging.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -133,6 +190,8 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
             "exit_price",
             "reason",
             "fees_est",
+            "pnl_quote",
+            "pnl_quote_net",
         ],
     )
     health_csv = CsvLogger(
@@ -155,6 +214,18 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
         bot_token=env_str("TELEGRAM_BOT_TOKEN", ""),
         chat_id=env_str("TELEGRAM_CHAT_ID", ""),
     )
+    telegram_debug = env_bool("TELEGRAM_DEBUG", False)
+    if notifier.enabled:
+        masked_chat = ("…" + notifier.chat_id[-4:]) if len(notifier.chat_id) >= 4 else "…"
+        log.info("Telegram ENABLED (chat_id=%s token_len=%d)", masked_chat, len(notifier.bot_token))
+    else:
+        log.warning("Telegram DISABLED — set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to receive alerts.")
+
+    def _h(x: Any) -> str:
+        return html.escape(str(x), quote=False)
+
+    def _kv(k: str, v: Any) -> str:
+        return f"<b>{_h(k)}:</b> {_h(v)}"
 
     # Telegram throttling (for non-trade noise)
     last_tg_ms = 0
@@ -166,15 +237,25 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
         now_ms = int(time.time() * 1000)
         if now_ms - last_tg_ms < cfg.monitor.telegram_min_gap_seconds * 1000:
             return
-        await notifier.send(text)
+        ok = await notifier.send(text, parse_mode="HTML")
+        if telegram_debug:
+            log.info("Telegram info sent=%s len=%d", ok, len(text))
         last_tg_ms = now_ms
 
     async def send_tg_trade(text: str) -> None:
         nonlocal last_tg_ms
         if not notifier.enabled:
             return
-        await notifier.send(text)
+        ok = await notifier.send(text, parse_mode="HTML")
+        if telegram_debug:
+            log.info("Telegram trade sent=%s len=%d", ok, len(text))
         last_tg_ms = int(time.time() * 1000)
+
+    def _h(x: Any) -> str:
+        return html.escape(str(x))
+
+    def _kv(k: str, v: Any) -> str:
+        return f"<b>{_h(k)}:</b> {_h(v)}"
 
     def log_trade(symbol: str, pos) -> None:
         """Write a compact trade summary row."""
@@ -182,6 +263,24 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
             return
         entry_iso = _ms_to_iso(pos.entry_time_ms) if getattr(pos, "entry_time_ms", None) else ""
         exit_iso = _ms_to_iso(pos.exit_time_ms) if getattr(pos, "exit_time_ms", None) else ""
+        fees_est = ""
+        if hasattr(pos, "estimated_fees"):
+            fees_est = round(pos.estimated_fees(getattr(trader, "fee_rate", 0.0)), 8)
+
+        pnl_gross = ""
+        pnl_net = ""
+        try:
+            side = getattr(pos, "side", "").upper()
+            qty = float(getattr(pos, "qty", 0.0))
+            entry_px = float(getattr(pos, "entry_price", 0.0))
+            exit_px = float(getattr(pos, "exit_price", 0.0))
+            if qty > 0 and entry_px > 0 and exit_px > 0 and side in ("LONG", "SHORT"):
+                gross = (exit_px - entry_px) * qty if side == "LONG" else (entry_px - exit_px) * qty
+                pnl_gross = gross
+                pnl_net = gross - (fees_est or 0.0)
+        except Exception:
+            pass
+
         trades_csv.log(
             {
                 "symbol": symbol,
@@ -192,9 +291,9 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                 "exit_time": exit_iso,
                 "exit_price": getattr(pos, "exit_price", ""),
                 "reason": getattr(pos, "exit_reason", ""),
-                "fees_est": round(pos.estimated_fees(getattr(trader, "fee_rate", 0.0)), 8)
-                if hasattr(pos, "estimated_fees")
-                else "",
+                "fees_est": fees_est,
+                "pnl_quote": pnl_gross,
+                "pnl_quote_net": pnl_net,
             }
         )
 
@@ -211,6 +310,7 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
     # Feed health stats
     last_agg_ms: Dict[str, int] = {s: 0 for s in cfg.engine.symbols}
     last_kline_ms: Dict[str, int] = {s: 0 for s in cfg.engine.symbols}
+    last_price: Dict[str, Optional[float]] = {s: None for s in cfg.engine.symbols}
     agg_msgs: Dict[str, int] = {s: 0 for s in cfg.engine.symbols}
     kline_msgs: Dict[str, int] = {s: 0 for s in cfg.engine.symbols}
     bars_finalized: Dict[str, int] = {s: 0 for s in cfg.engine.symbols}
@@ -239,6 +339,10 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
             time_exit_seconds=cfg.execution.time_exit_seconds,
             trading_mode=trading_mode,
         )
+        trader_src = inspect.getsourcefile(Trader)
+        log.info("Trader source file: %s", trader_src)
+        if not callable(getattr(trader, "open_position", None)):
+            raise RuntimeError(f"Trader.open_position missing or not callable (source={trader_src})")
 
         # Bootstrap Donchian window from REST klines
         for sym in cfg.engine.symbols:
@@ -269,7 +373,14 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
             etype = data.get("e")
             if etype == "listenKeyExpired":
                 user_stream_ok = False
-                await send_tg_info("User data listenKey expired; restart bot to refresh key.")
+                await send_tg_info(
+                    "\n".join(
+                        [
+                            "⚠️ <b>USER STREAM</b>",
+                            "listenKey expired — restart service to refresh.",
+                        ]
+                    )
+                )
                 return
             if etype != "ORDER_TRADE_UPDATE":
                 return
@@ -314,7 +425,14 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                         }
                     )
                     await send_tg_trade(
-                        f"FILLED {sym} {pos_filled.side} qty={pos_filled.qty} avg~{pos_filled.entry_price:.4f}"
+                        "\n".join(
+                            [
+                                f"✅ <b>FILLED</b> <b>{_h(sym)}</b>",
+                                _kv("Side", pos_filled.side),
+                                _kv("Qty", pos_filled.qty),
+                                _kv("Avg", f"{pos_filled.entry_price:.4f}"),
+                            ]
+                        )
                     )
                 return
 
@@ -333,7 +451,16 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                             "details": f"order_id={order_id}",
                         }
                     )
-                    await send_tg_trade(f"REJECTED {sym} {pos_rej.side} qty={pos_rej.qty} status={status}")
+                    await send_tg_trade(
+                        "\n".join(
+                            [
+                                f"❌ <b>REJECTED</b> <b>{_h(sym)}</b>",
+                                _kv("Side", pos_rej.side),
+                                _kv("Qty", pos_rej.qty),
+                                _kv("Status", status),
+                            ]
+                        )
+                    )
                 return
 
             # Stop-loss triggered
@@ -354,7 +481,14 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                     )
                     log_trade(sym, pos_stop)
                     await send_tg_trade(
-                        f"STOP FILLED {sym} {pos_stop.side} qty={pos_stop.qty} px~{(price or pos_stop.stop_trigger_price):.4f}"
+                        "\n".join(
+                            [
+                                f"🛑 <b>STOP FILLED</b> <b>{_h(sym)}</b>",
+                                _kv("Side", pos_stop.side),
+                                _kv("Qty", pos_stop.qty),
+                                _kv("Px", f"{(price or pos_stop.stop_trigger_price):.4f}"),
+                            ]
+                        )
                     )
 
         async def start_user_stream() -> None:
@@ -368,7 +502,14 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
             except Exception as e:
                 user_stream_ok = False
                 log.warning("User stream start failed: %s", e)
-                await send_tg_info("User data stream unavailable; fill/stop confirmations disabled.")
+                await send_tg_info(
+                    "\n".join(
+                        [
+                            "⚠️ <b>USER STREAM</b>",
+                            "Unavailable — fill/stop confirmations disabled.",
+                        ]
+                    )
+                )
                 return
 
             user_ws = BinanceMarketStream(
@@ -389,7 +530,14 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                 except Exception as e:
                     log.warning("User stream keepalive failed: %s", e)
                     user_stream_ok = False
-                    await send_tg_info("User data stream keepalive failed; fill confirmations may stop.")
+                    await send_tg_info(
+                        "\n".join(
+                            [
+                                "⚠️ <b>USER STREAM</b>",
+                                "Keepalive failed — confirmations may stop.",
+                            ]
+                        )
+                    )
         async def handle_aggtrade(msg: dict) -> None:
             data = msg.get("data", msg)
             if data.get("e") != "aggTrade":
@@ -407,6 +555,7 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
 
             last_agg_ms[sym] = trade_ms
             agg_msgs[sym] += 1
+            last_price[sym] = price
 
             # Build 5s bars
             finalized = accum[sym].add_trade(trade_ms, price, is_buyer_maker)
@@ -453,7 +602,14 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                                     "details": "exchange positionAmt ~ 0",
                                 }
                             )
-                            await send_tg_trade(f"{sym} detected flat on-exchange (cleared local position state).")
+                            await send_tg_trade(
+                                "\n".join(
+                                    [
+                                        f"ℹ️ <b>POSITION SYNC</b> <b>{_h(sym)}</b>",
+                                        "Exchange shows flat; local state cleared.",
+                                    ]
+                                )
+                            )
                     except Exception as e:
                         log.warning("position sync failed for %s: %s", sym, e)
 
@@ -478,7 +634,14 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                         if pos_closed:
                             log_trade(sym, pos_closed)
                         await send_tg_trade(
-                            f"TIME EXIT {sym} {close_res.get('direction')} qty={close_res.get('qty')} price~{float(exit_px):.2f}"
+                            "\n".join(
+                                [
+                                    f"⏱️ <b>TIME EXIT</b> <b>{_h(sym)}</b>",
+                                    _kv("Direction", close_res.get("direction")),
+                                    _kv("Qty", close_res.get("qty")),
+                                    _kv("Mark", f"{float(exit_px):.2f}"),
+                                ]
+                            )
                         )
 
                 # Entry checks
@@ -560,18 +723,54 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                         continue
 
                     if status == "error":
-                        await send_tg_info(f"OPEN FAILED {sym} {signal_s} error={res.get('error')}")
+                        await send_tg_info(
+                            "\n".join(
+                                [
+                                    f"❌ <b>OPEN FAILED</b> <b>{_h(sym)}</b>",
+                                    _kv("Direction", signal_s),
+                                    _kv("Error", res.get("error")),
+                                ]
+                            )
+                        )
                         continue
 
                     if trading_mode != "live":
-                        await send_tg_trade(f"PAPER OPEN {sym} {signal_s} qty={qty_open} price~{mark:.2f}")
+                        await send_tg_trade(
+                            "\n".join(
+                                [
+                                    f"📌 <b>PAPER OPEN</b> <b>{_h(sym)}</b>",
+                                    _kv("Direction", signal_s),
+                                    _kv("Qty", qty_open),
+                                    _kv("Mark", f"{mark:.2f}"),
+                                    _kv("Delta Z", f"{dz:.2f}"),
+                                    _kv("Trades", bar.trades),
+                                ]
+                            )
+                        )
                     else:
                         stop_note = "stop_ok" if not res.get("stop_error") else "stop_fail"
                         await send_tg_trade(
-                            f"OPEN_SENT {sym} {signal_s} qty={qty_open} z={dz:.2f} trades={bar.trades} price~{mark:.2f} {stop_note}"
+                            "\n".join(
+                                [
+                                    f"🚀 <b>OPEN SENT</b> <b>{_h(sym)}</b>",
+                                    _kv("Direction", signal_s),
+                                    _kv("Qty", qty_open),
+                                    _kv("Mark", f"{mark:.2f}"),
+                                    _kv("Delta Z", f"{dz:.2f}"),
+                                    _kv("Trades", bar.trades),
+                                    _kv("Stop", stop_note),
+                                ]
+                            )
                         )
                         if res.get("stop_error"):
-                            await send_tg_info(f"Stop placement failed for {sym}: {res.get('stop_error')}")
+                            await send_tg_info(
+                                "\n".join(
+                                    [
+                                        f"⚠️ <b>STOP FAILED</b> <b>{_h(sym)}</b>",
+                                        _kv("Error", res.get("stop_error")),
+                                    ]
+                                )
+                            )
 
         async def handle_kline(msg: dict) -> None:
             data = msg.get("data", msg)
@@ -592,6 +791,7 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                 return
             kline_msgs[sym] += 1
             last_kline_ms[sym] = close_time
+            last_price[sym] = float(k.get("c", last_price.get(sym) or 0) or 0)
             donch[sym].push_candle(high, low, close_time)
 
         async def on_ws_message(msg: dict) -> None:
@@ -638,16 +838,29 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
             last_stale_send: Dict[str, int] = {s: 0 for s in cfg.engine.symbols}
             last_hb_send = 0
 
+            # Optional Telegram startup self-test
+            if env_bool("TELEGRAM_STARTUP_PING", False) and notifier.enabled:
+                ok = await notifier.send("🧪 SNIPER BOT Telegram self-test: OK", parse_mode="")
+                log.info("Telegram startup ping sent=%s", ok)
+
             # Startup banner (one-time)
             await send_tg_info(
                 "\n".join(
                     [
-                        "Sniper Bot ONLINE",
-                        f"mode={trading_mode} testnet={is_testnet}",
-                        f"symbols={','.join(cfg.engine.symbols)}",
-                        f"donch=1m({cfg.engine.donchian_window_minutes}) bar={cfg.engine.bar_seconds}s",
-                        f"thr={cfg.engine.opposing_threshold_z} z_cap={cfg.engine.z_cap_abs} min_trades={cfg.engine.min_trades_per_bar}",
-                        f"notional={cfg.execution.notional_usdt_per_trade} lev={cfg.execution.leverage} SL={cfg.execution.stop_loss_pct*100:.3f}% exit={cfg.execution.time_exit_seconds}s",
+                        "<b>SNIPER BOT</b> ✅ <i>ONLINE</i>",
+                        _kv("Mode", trading_mode.upper()),
+                        _kv("Testnet", is_testnet),
+                        _kv("Symbols", ", ".join(cfg.engine.symbols)),
+                        _kv("Donchian", f"1m({cfg.engine.donchian_window_minutes})"),
+                        _kv("Bar", f"{cfg.engine.bar_seconds}s"),
+                        _kv("Threshold", cfg.engine.opposing_threshold_z),
+                        _kv("Z Cap", cfg.engine.z_cap_abs),
+                        _kv("Min Trades", cfg.engine.min_trades_per_bar),
+                        _kv("Notional", f"${cfg.execution.notional_usdt_per_trade:g}"),
+                        _kv("Leverage", cfg.execution.leverage),
+                        _kv("SL", f"{cfg.execution.stop_loss_pct*100:.3f}%"),
+                        _kv("Time Exit", f"{cfg.execution.time_exit_seconds}s"),
+                        "<i>Telemetry:</i> events.csv • orders.csv • trades.csv • health.csv",
                     ]
                 )
             )
@@ -655,6 +868,46 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
             while not stop_event.is_set():
                 now_ms = int(time.time() * 1000)
                 open_pos = len(trader.positions)
+
+                # Out-of-band time-exit guard: enforce exits even if bars stopped
+                for sym in list(trader.positions.keys()):
+                    pos = trader.positions.get(sym)
+                    if not pos:
+                        continue
+                    if now_ms >= pos.time_exit_ms:
+                        try:
+                            mark_px = await rest.mark_price(sym)
+                        except Exception:
+                            lp = last_price.get(sym)
+                            mark_px = lp if lp is not None else getattr(pos, "entry_price", 0.0)
+                        close_res = await trader.close_if_due(sym, now_ms=now_ms, mark_price=mark_px)
+                        if close_res is not None:
+                            exit_px = close_res.get("mark_price", mark_px)
+                            pos_closed = close_res.get("pos")
+                            orders_csv.log(
+                                {
+                                    "ts_iso": _ms_to_iso(now_ms),
+                                    "symbol": sym,
+                                    "action": "TIME_EXIT",
+                                    "direction": close_res.get("direction", ""),
+                                    "qty": close_res.get("qty", ""),
+                                    "price": exit_px,
+                                    "status": close_res.get("status", ""),
+                                    "details": str(close_res.get("order", ""))[:400],
+                                }
+                            )
+                            if pos_closed:
+                                log_trade(sym, pos_closed)
+                            await send_tg_trade(
+                                "\n".join(
+                                    [
+                                        f"<b>TIME EXIT (OOB)</b> <b>{_h(sym)}</b>",
+                                        _kv("Direction", close_res.get("direction")),
+                                        _kv("Qty", close_res.get("qty")),
+                                        _kv("Mark", f"{float(exit_px):.2f}"),
+                                    ]
+                                )
+                            )
 
                 for sym in cfg.engine.symbols:
                     agg_age_s = ""
@@ -698,17 +951,39 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                         reconnect_sent[sym] = False
                         last_stale_send[sym] = now_ms
                         await send_tg_trade(
-                            f"FEED STALE {sym} agg_age={agg_age_s}s kline_age={kline_age_s}s (will keep trying)"
+                            "\n".join(
+                                [
+                                    f"⚠️ <b>FEED STALE</b> <b>{_h(sym)}</b>",
+                                    _kv("Agg age", f"{agg_age_s}s"),
+                                    _kv("Kline age", f"{kline_age_s}s"),
+                                    "<i>Recovery loop active…</i>",
+                                ]
+                            )
                         )
                     elif (not is_stale) and stale_state[sym]:
                         stale_state[sym] = False
                         stale_since[sym] = None
                         reconnect_sent[sym] = False
-                        await send_tg_trade(f"FEED RECOVERED {sym} agg_age={agg_age_s}s kline_age={kline_age_s}s")
+                        await send_tg_trade(
+                            "\n".join(
+                                [
+                                    f"✅ <b>FEED RECOVERED</b> <b>{_h(sym)}</b>",
+                                    _kv("Agg age", f"{agg_age_s}s"),
+                                    _kv("Kline age", f"{kline_age_s}s"),
+                                ]
+                            )
+                        )
                     elif is_stale and (now_ms - last_stale_send[sym]) > cfg.monitor.stale_repeat_seconds * 1000:
                         last_stale_send[sym] = now_ms
                         await send_tg_info(
-                            f"still stale {sym} agg_age={agg_age_s}s kline_age={kline_age_s}s (msgs agg={agg_msgs[sym]} kline={kline_msgs[sym]})"
+                            "\n".join(
+                                [
+                                    f"⚠️ <b>STILL STALE</b> <b>{_h(sym)}</b>",
+                                    _kv("Agg age", f"{agg_age_s}s"),
+                                    _kv("Kline age", f"{kline_age_s}s"),
+                                    _kv("Msgs", f"agg={agg_msgs[sym]} kline={kline_msgs[sym]}"),
+                                ]
+                            )
                         )
 
                     if (
@@ -723,7 +998,15 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                         if kline_stale:
                             kl_ws.request_reconnect()
                         await send_tg_info(
-                            f"Watchdog reconnect {sym} agg_stale={agg_stale} kline_stale={kline_stale} agg_age={agg_age_s}s kline_age={kline_age_s}s"
+                            "\n".join(
+                                [
+                                    f"🔄 <b>WATCHDOG RECONNECT</b> <b>{_h(sym)}</b>",
+                                    _kv("Agg stale", agg_stale),
+                                    _kv("Kline stale", kline_stale),
+                                    _kv("Agg age", f"{agg_age_s}s"),
+                                    _kv("Kline age", f"{kline_age_s}s"),
+                                ]
+                            )
                         )
 
                 # Heartbeat (optional)
@@ -733,7 +1016,15 @@ async def main_async(config_path: str, self_test: bool = False, self_test_timeou
                         # Don't spam: send_tg_info will enforce min gap
                         total_bars = sum(bars_finalized.values())
                         await send_tg_info(
-                            f"HEARTBEAT mode={trading_mode} testnet={is_testnet} open_pos={len(trader.positions)} total_bars={total_bars}"
+                            "\n".join(
+                                [
+                                    "🫀 <b>HEARTBEAT</b>",
+                                    _kv("Mode", trading_mode.upper()),
+                                    _kv("Testnet", is_testnet),
+                                    _kv("Open positions", len(trader.positions)),
+                                    _kv("Total bars", total_bars),
+                                ]
+                            )
                         )
 
                 await asyncio.sleep(cfg.monitor.sample_interval_seconds)

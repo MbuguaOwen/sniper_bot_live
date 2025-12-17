@@ -1,3 +1,73 @@
 ts_iso,symbol,action,direction,qty,price,status,details
 2025-12-17T11:19:58.011Z,ETHUSDT,OPEN,SHORT,0.008,2925.49,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2925.49, 'stop': 2931.34}"
 2025-12-17T11:25:03.617Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2926.32,paper_close,
+2025-12-17T11:44:07.089Z,ETHUSDT,OPEN,SHORT,0.008,2929.61,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2929.61, 'stop': 2935.46}"
+2025-12-17T11:49:11.865Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2926.5,paper_close,
+2025-12-17T11:52:28.234Z,ETHUSDT,OPEN,SHORT,0.008,2930.99,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2930.99, 'stop': 2936.85}"
+2025-12-17T11:57:34.735Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2926.24,paper_close,
+2025-12-17T12:01:52.576Z,BTCUSDT,OPEN,SHORT,,87036.39206522,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:02:56.577Z,BTCUSDT,OPEN,SHORT,,87040.1,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:03:56.845Z,BTCUSDT,OPEN,SHORT,,87068.55963768,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:07:01.464Z,BTCUSDT,OPEN,SHORT,,87169.5,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:10:07.153Z,ETHUSDT,OPEN,SHORT,0.008,2931.09,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2931.09, 'stop': 2936.95}"
+2025-12-17T12:15:15.232Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2933.4,paper_close,
+2025-12-17T12:16:02.949Z,ETHUSDT,OPEN,SHORT,0.008,2930.93,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2930.93, 'stop': 2936.79}"
+2025-12-17T12:21:08.615Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2929.95,paper_close,
+2025-12-17T12:22:03.187Z,BTCUSDT,OPEN,SHORT,,86983.35889493,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:24:43.316Z,ETHUSDT,OPEN,LONG,0.008,2927.21,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'LONG', 'qty': 0.008, 'mark_price': 2927.21, 'stop': 2921.35}"
+2025-12-17T12:29:47.500Z,ETHUSDT,TIME_EXIT,LONG,0.008,2922.77,paper_close,
+2025-12-17T12:31:16.667Z,ETHUSDT,OPEN,LONG,0.008,2925.39,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'LONG', 'qty': 0.008, 'mark_price': 2925.39, 'stop': 2919.53}"
+2025-12-17T12:36:22.940Z,ETHUSDT,TIME_EXIT,LONG,0.008,2930.46,paper_close,
+2025-12-17T12:40:18.131Z,BTCUSDT,OPEN,SHORT,,87029.5,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:42:16.885Z,BTCUSDT,OPEN,SHORT,,87025.48673913,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:46:17.606Z,BTCUSDT,OPEN,LONG,,86811.1,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:46:42.308Z,ETHUSDT,OPEN,LONG,0.008,2921.81,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'LONG', 'qty': 0.008, 'mark_price': 2921.81, 'stop': 2915.96}"
+2025-12-17T12:51:46.979Z,ETHUSDT,TIME_EXIT,LONG,0.008,2926.67,paper_close,
+2025-12-17T12:52:22.962Z,BTCUSDT,OPEN,LONG,,87028.30224638,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:53:31.682Z,BTCUSDT,OPEN,LONG,,87009.63021739,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T12:55:23.463Z,BTCUSDT,OPEN,SHORT,,86987.7,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:00:32.778Z,BTCUSDT,OPEN,LONG,,87001.3,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:01:33.039Z,BTCUSDT,OPEN,LONG,,87030.44568841,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:04:41.769Z,BTCUSDT,OPEN,LONG,,87082.31418478,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:05:41.820Z,BTCUSDT,OPEN,SHORT,,87103.34003623,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:07:27.918Z,BTCUSDT,OPEN,SHORT,,87160.03639493,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:08:33.888Z,ETHUSDT,OPEN,SHORT,0.008,2926.33251938,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2926.33251938, 'stop': 2932.18}"
+2025-12-17T13:13:39.044Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2928.09,paper_close,
+2025-12-17T13:19:48.278Z,BTCUSDT,OPEN,LONG,,86840.47971014,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:21:17.245Z,ETHUSDT,OPEN,LONG,0.008,2921.44306202,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'LONG', 'qty': 0.008, 'mark_price': 2921.44306202, 'stop': 2915.6}"
+2025-12-17T13:26:21.570Z,ETHUSDT,TIME_EXIT,LONG,0.008,2924.28,paper_close,
+2025-12-17T13:29:57.094Z,BTCUSDT,OPEN,SHORT,,87040.29146245,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:31:11.741Z,XRPUSDT,OPEN,LONG,13.100000000000001,1.9082,paper_open,"{'status': 'paper_open', 'symbol': 'XRPUSDT', 'direction': 'LONG', 'qty': 13.100000000000001, 'mark_price': 1.9082, 'stop': 1.9043}"
+2025-12-17T13:36:17.212Z,XRPUSDT,TIME_EXIT,LONG,13.100000000000001,1.9098,paper_close,
+2025-12-17T13:36:21.948Z,BTCUSDT,OPEN,SHORT,,87138.09822464,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T13:43:53.011Z,ETHUSDT,OPEN,SHORT,0.008,2927.76594961,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2927.76594961, 'stop': 2933.62}"
+2025-12-17T13:48:57.820Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2944.7,paper_close,
+2025-12-17T13:49:37.090Z,ETHUSDT,OPEN,SHORT,0.008,2941.57,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2941.57, 'stop': 2947.45}"
+2025-12-17T13:54:42.239Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2937.57,paper_close,
+2025-12-17T13:58:07.092Z,BTCUSDT,OPEN,SHORT,,87594.2,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T14:00:02.549Z,BTCUSDT,OPEN,SHORT,,87601.49699275,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T14:01:41.629Z,BTCUSDT,OPEN,SHORT,,87597.14677866,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T14:01:47.066Z,ETHUSDT,OPEN,SHORT,0.008,2942.79356237,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2942.79356237, 'stop': 2948.67}"
+2025-12-17T14:06:47.489Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2942.04,paper_close,
+2025-12-17T14:07:18.228Z,BTCUSDT,OPEN,SHORT,,87495.95009058,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T14:11:22.119Z,BTCUSDT,OPEN,SHORT,,87571.7,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T14:14:28.496Z,BTCUSDT,OPEN,SHORT,,87569.67746377,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T14:18:57.346Z,ETHUSDT,OPEN,SHORT,0.008,2945.09,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'SHORT', 'qty': 0.008, 'mark_price': 2945.09, 'stop': 2950.98}"
+2025-12-17T14:24:02.628Z,ETHUSDT,TIME_EXIT,SHORT,0.008,2945.38,paper_close,
+2025-12-17T14:24:32.881Z,BTCUSDT,OPEN,SHORT,,87751.34715415,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T14:32:11.944Z,BTCUSDT,OPEN,SHORT,,87745.53822464,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T14:37:06.265Z,ETHUSDT,OPEN,LONG,0.008,2930.01930233,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'LONG', 'qty': 0.008, 'mark_price': 2930.01930233, 'stop': 2924.15}"
+2025-12-17T14:42:08.335Z,ETHUSDT,TIME_EXIT,LONG,0.008,2925.59,paper_close,
+2025-12-17T14:42:54.106Z,ETHUSDT,OPEN,LONG,0.008,2925.98,paper_open,"{'status': 'paper_open', 'symbol': 'ETHUSDT', 'direction': 'LONG', 'qty': 0.008, 'mark_price': 2925.98, 'stop': 2920.12}"
+2025-12-17T17:05:22.948Z,ETHUSDT,TIME_EXIT,LONG,0.008,2895.62,paper_close,
+2025-12-17T17:40:41.701Z,BTCUSDT,OPEN,LONG,,86567.2,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T17:46:42.486Z,XRPUSDT,OPEN,LONG,13.3,1.8741,paper_open,"{'status': 'paper_open', 'symbol': 'XRPUSDT', 'direction': 'LONG', 'qty': 13.3, 'mark_price': 1.8741, 'stop': 1.8703}"
+2025-12-17T17:51:44.051Z,XRPUSDT,TIME_EXIT,LONG,13.3,1.8757,paper_close,
+2025-12-17T20:07:17.313Z,BTCUSDT,OPEN,LONG,,85736.9,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T20:15:21.972Z,BTCUSDT,OPEN,LONG,,85746.9,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T20:30:32.651Z,DOGEUSDT,OPEN,SHORT,195.0,0.12757,paper_open,"{'status': 'paper_open', 'symbol': 'DOGEUSDT', 'direction': 'SHORT', 'qty': 195.0, 'mark_price': 0.12757, 'stop': 0.12782}"
+2025-12-17T20:35:37.596Z,DOGEUSDT,TIME_EXIT,SHORT,195.0,0.12706,paper_close,
+2025-12-17T20:48:42.139Z,BTCUSDT,OPEN,SHORT,,86061.97719203,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T20:50:27.573Z,BTCUSDT,OPEN,SHORT,,86059.36530797,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T20:51:54.386Z,BTCUSDT,OPEN,SHORT,,85990.08833992,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T20:53:52.487Z,BTCUSDT,OPEN,SHORT,,85962.71620553,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"

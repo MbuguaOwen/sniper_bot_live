@@ -34,3 +34,7 @@ monitor:
   stale_repeat_seconds: 600
   stale_force_reconnect_seconds: 240
   health_csv: "health.csv"
+
+binance:
+  rest_base: ""           # optional override; leave blank to auto-select from testnet flag
+  ws_base: ""             # optional override; leave blank to auto-select from testnet flag

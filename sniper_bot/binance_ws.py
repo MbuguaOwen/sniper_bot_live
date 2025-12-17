@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import random
-import time
 from typing import Callable, Awaitable, Optional, List
 
 import websockets
@@ -53,7 +51,12 @@ class BinanceMarketStream:
         return f"{self.ws_base}/ws/{self.streams[0]}"
 
     async def run_forever(self) -> None:
-        backoff = 1.0
+        # Exponential backoff to protect DNS/network stack during outages.
+        # Sequence: 1s, 2s, 4s, 8s, ... capped at 60s.
+        backoff_s = 1.0
+        max_backoff_s = 60.0
+        consecutive_failures = 0
+
         while not self._stop.is_set():
             try:
                 url = self._url()
@@ -61,8 +64,10 @@ class BinanceMarketStream:
                 async with websockets.connect(url, ping_interval=20, ping_timeout=20, close_timeout=5) as ws:
                     self._ws = ws
                     self._reconnect.clear()
-                    backoff = 1.0
+                    consecutive_failures = 0
+                    backoff_s = 1.0
                     log.info("[%s] connected", self.name)
+
                     async for raw in ws:
                         if self._stop.is_set():
                             break
@@ -73,16 +78,30 @@ class BinanceMarketStream:
                             msg = json.loads(raw)
                         except Exception:
                             continue
-                        await self.on_message(msg)
+
+                        # Never let handler exceptions kill the websocket loop.
+                        # (A strategy bug should not cause reconnect storms.)
+                        try:
+                            await self.on_message(msg)
+                        except Exception as e:
+                            log.exception("[%s] handler error (message skipped): %s", self.name, e)
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                log.warning("[%s] ws error: %s", self.name, e)
+                consecutive_failures += 1
+                backoff_s = min(max_backoff_s, 2.0 ** (consecutive_failures - 1))
+                log.warning(
+                    "[%s] ws error: %s (reconnect in %.1fs; failures=%d)",
+                    self.name,
+                    e,
+                    backoff_s,
+                    consecutive_failures,
+                )
 
-            # jittered reconnect
+            # reconnect delay (exponential backoff; deterministic)
             self._ws = None
-            await asyncio.sleep(backoff + random.random() * 0.25)
-            backoff = min(backoff * 1.7, 30.0)
+            await asyncio.sleep(backoff_s)
 
         self._ws = None
         log.info("[%s] stopped", self.name)

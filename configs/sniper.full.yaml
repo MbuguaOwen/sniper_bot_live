@@ -1,4 +1,3 @@
-# /docs/
 # Full configuration with every optional key spelled out.
 # Safe for paper mode by default; flip TRADING_MODE=live in .env when ready.
 
@@ -60,3 +59,10 @@ monitor:
 
   # Health log file
   health_csv: "health.csv"
+
+binance:
+  # Endpoints derived from BINANCE_TESTNET in .env (this key is ignored for testnet selection).
+
+  # Optional endpoint overrides (normally leave blank; derived from testnet flag)
+  rest_base: ""
+  ws_base: ""

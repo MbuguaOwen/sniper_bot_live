@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Any
+from typing import List, Any, Optional
 import os
 
 import yaml
@@ -64,11 +64,36 @@ class AppConfig:
     execution: ExecutionConfig
     logging: LoggingConfig
     monitor: MonitorConfig
+    binance: "BinanceConfig"
+
+
+@dataclass(frozen=True)
+class BinanceConfig:
+    testnet: Optional[bool]
+    rest_base: str
+    ws_base: str
 
 
 def _require(cond: bool, msg: str) -> None:
     if not cond:
         raise ValueError(msg)
+
+
+def _parse_bool_strict(v: Any, name: str = "") -> bool:
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        if v in (0, 0.0):
+            return False
+        if v in (1, 1.0):
+            return True
+    if isinstance(v, str):
+        s = v.strip().lower()
+        if s in ("1", "true", "yes", "y", "on"):
+            return True
+        if s in ("0", "false", "no", "n", "off"):
+            return False
+    raise ValueError(f"Invalid boolean for {name or 'value'}: {v!r}")
 
 
 def _as_bool(v: Any, default: bool = False) -> bool:
@@ -93,6 +118,7 @@ def load_config(path: str | Path) -> AppConfig:
     exe = data["execution"]
     log = data["logging"]
     mon = data.get("monitor", {})
+    bin_cfg_raw = data.get("binance", {})
 
     engine = EngineConfig(
         symbols=list(eng["symbols"]),
@@ -133,6 +159,17 @@ def load_config(path: str | Path) -> AppConfig:
         health_csv=str(mon.get("health_csv", "health.csv")),
     )
 
+    binance_testnet: Optional[bool]
+    if "testnet" in bin_cfg_raw:
+        binance_testnet = _parse_bool_strict(bin_cfg_raw.get("testnet"), name="binance.testnet")
+    else:
+        binance_testnet = None
+    binance = BinanceConfig(
+        testnet=binance_testnet,
+        rest_base=str(bin_cfg_raw.get("rest_base", "") or ""),
+        ws_base=str(bin_cfg_raw.get("ws_base", "") or ""),
+    )
+
     _require(engine.bar_seconds in (1, 2, 5, 10), "bar_seconds must be one of {1,2,5,10}.")
     _require(engine.donchian_window_minutes >= 20, "donchian_window_minutes must be >= 20.")
     _require(engine.roll_window_bars >= 60, "roll_window_bars must be >= 60.")
@@ -155,14 +192,14 @@ def load_config(path: str | Path) -> AppConfig:
     _require(monitor.stale_repeat_seconds > 0, "monitor.stale_repeat_seconds must be > 0.")
     _require(monitor.stale_force_reconnect_seconds >= 30, "monitor.stale_force_reconnect_seconds must be >= 30.")
 
-    return AppConfig(engine=engine, execution=execution, logging=logging, monitor=monitor)
+    return AppConfig(engine=engine, execution=execution, logging=logging, monitor=monitor, binance=binance)
 
 
 def env_bool(name: str, default: bool) -> bool:
     v = os.getenv(name)
-    if v is None:
+    if v is None or v.strip() == "":
         return default
-    return v.strip().lower() in ("1", "true", "yes", "y", "on")
+    return _parse_bool_strict(v, name=f"env {name}")
 
 
 def env_int(name: str, default: int) -> int:
