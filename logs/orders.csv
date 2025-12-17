@@ -71,3 +71,8 @@ ts_iso,symbol,action,direction,qty,price,status,details
 2025-12-17T20:50:27.573Z,BTCUSDT,OPEN,SHORT,,86059.36530797,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
 2025-12-17T20:51:54.386Z,BTCUSDT,OPEN,SHORT,,85990.08833992,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
 2025-12-17T20:53:52.487Z,BTCUSDT,OPEN,SHORT,,85962.71620553,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T21:23:13.634Z,BTCUSDT,OPEN,LONG,,85767.92077899,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T21:25:12.834Z,BTCUSDT,OPEN,LONG,,85754.86208333,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T21:39:22.554Z,BTCUSDT,OPEN,LONG,,85730.0,skip,"{'status': 'skip', 'reason': 'qty<0.001'}"
+2025-12-17T21:41:07.218Z,DOGEUSDT,OPEN,LONG,198.0,0.12589573,paper_open,"{'status': 'paper_open', 'symbol': 'DOGEUSDT', 'direction': 'LONG', 'qty': 198.0, 'mark_price': 0.12589573, 'stop': 0.12564}"
+2025-12-17T21:46:14.708Z,DOGEUSDT,TIME_EXIT,LONG,198.0,0.12599,paper_close,
